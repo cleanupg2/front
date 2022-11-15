@@ -18,6 +18,12 @@ availableNum = None
 dirtyNum = None
 bedNum = None
 sheetNum = None
+pillowcaseNum = None
+duvetNum = None
+bathNum = None
+bathtowelNum = None
+facetowelNum = None
+bathmatNum = None
 
 class tkinterApp(tk.Tk):
 
@@ -34,7 +40,7 @@ class tkinterApp(tk.Tk):
 
         self.frames = {}
 
-        for F in (LoginPage, Menu, StartPage, Page1, Page2):
+        for F in (LoginPage, Menu, tagList, StartPage, Page1, Page2):
 
             frame = F(container, self)
 
@@ -43,9 +49,57 @@ class tkinterApp(tk.Tk):
 
         self.show_frame(LoginPage)
 
-    def show_frame(self, cont):
+    def show_frame(self, cont):  
         frame = self.frames[cont]           
         frame.pack( expand=True,fill=tk.NONE)
+        if cont == tagList:
+            items = cook.get(URL+"/get_tags").json()
+            m = 3
+            for item in items:
+                for j in range(len(item)-1):
+                    e = ttk.Label(frame,text=item[j])
+                    e.grid(row=m,column=j,padx=10,pady=10)
+                m+=1
+        elif cont == Menu:
+            global tags
+            global totalNum
+            global discardedNum
+            global availableNum
+            global dirtyNum
+            global sheetNum
+            global pillowcaseNum
+            global duvetNum
+            global bathNum
+            global bathtowelNum
+            global facetowelNum
+            global bathmatNum
+            tags = cook.get(URL+"/total_tags")
+            tags = tags.json()
+            items = tags
+            total = items["total"]
+            discarded = items["discarded"]
+            available = items["available"]
+            dirty = items["dirty"]
+            bed = items["bed"]
+            sheet = items["bed_items"]["Lençol"]
+            pillowcase = items["bed_items"]["Fronha"]
+            duvet = items["bed_items"]["Edredom"]
+            bath = items["bath"]
+            bathtowel = items["bath_items"]["Toalha de banho"]
+            facetowel = items["bath_items"]["Toalha de rosto"]
+            bathmat = items["bath_items"]["Tapete banheiro"]
+            totalNum['text']=total
+            discardedNum['text'] = discarded
+            availableNum['text'] = available
+            dirtyNum['text'] = dirty
+            bedNum['text'] = bed
+            sheetNum['text'] = sheet
+            pillowcaseNum['text']=pillowcase
+            duvetNum['text'] = duvet
+            bathNum['text'] = bath
+            bathtowelNum["text"] = bathtowel
+            facetowelNum["text"] = facetowel
+            bathmatNum['text'] = bathmat
 
 class LoginPage(tk.Frame):
 
@@ -102,30 +156,7 @@ class LoginPage(tk.Frame):
             # messagebox.showinfo("Alerta", err)
 
     def changePage(self, controller):
-        global tags
-        global totalNum
-        global discardedNum
-        global availableNum
-        global dirtyNum
-        global sheetNum
         self.pack_forget()
-        tags = cook.get(URL+"/total_tags")
-        tags = tags.json()
-        items = tags
-        total = items["total"]
-        discarded = items["discarded"]
-        available = items["available"]
-        dirty = items["dirty"]
-        bed = items["bed"]
-        sheet = items["bed_items"]["Lençol"]
-        bath = items["bath"]
-        bath_items = items["bath_items"]
-        totalNum['text']=total
-        discardedNum['text'] = discarded
-        availableNum['text'] = available
-        dirtyNum['text'] = dirty
-        bedNum['text'] = bed
-        sheetNum['text'] = sheet
         controller.show_frame(Menu)
      
 
@@ -139,6 +170,12 @@ class Menu(tk.Frame):
         global dirtyNum
         global bedNum
         global sheetNum
+        global pillowcaseNum
+        global duvetNum
+        global bathNum
+        global bathtowelNum
+        global facetowelNum
+        global bathmatNum
 
         ttk.Frame.__init__(self, parent)
         
@@ -149,14 +186,11 @@ class Menu(tk.Frame):
         countTagButton = ttk.Button(menuFrame,text="Ler Tags")
         countTagButton.grid(row=0,padx=10,pady=10,sticky=tk.W)
 
-        tagListButton = ttk.Button(menuFrame,text="Lista de items")
+        tagListButton = ttk.Button(menuFrame,text="Lista de items",command= lambda: self.seeTags(controller))
         tagListButton.grid(row=1,padx=10,pady=10,sticky=tk.W)
 
         supListButton = ttk.Button(menuFrame,text="Lista de Fornecedores")
         supListButton.grid(row=2,padx=10,pady=10,sticky=tk.W)
-
-        catListButton = ttk.Button(menuFrame,text="Lista de Categorias")
-        catListButton.grid(row=3,padx=10,pady=10,sticky=tk.W)
 
         adminDash = ttk.Labelframe(self,text="Dashboard Administrativo")
         adminDash.grid(row=1,padx=10,pady=10,sticky=tk.W)
@@ -169,8 +203,6 @@ class Menu(tk.Frame):
 
         supRegButton = ttk.Button(adminDash,text="Registrar Fornecedores")
         supRegButton.grid(row=1,padx=10,pady=10,sticky=tk.W)
-
-        catRegButton = ttk.Button(adminDash,text="Registrar Categorias")
         
         logoutButton = ttk.Button(self,text="LOGOUT",command=lambda: self.logout_request(controller))
         logoutButton.grid(row=2,padx=10,pady=10)
@@ -214,6 +246,47 @@ class Menu(tk.Frame):
         sheetNum = ttk.Label(statsFrame,text="##")
         sheetNum.grid(row=2,column=3,padx=10,pady=10,sticky=tk.W)
 
+        pillowcaseLabel = ttk.Label(statsFrame,text="Fronha:")
+        pillowcaseLabel.grid(row=2,column=4,padx=10,pady=10,sticky=tk.W)
+
+        pillowcaseNum = ttk.Label(statsFrame, text="##")
+        pillowcaseNum.grid(row=2,column=5,padx=10,pady=10,sticky=tk.W)
+
+        duvetLabel = ttk.Label(statsFrame,text="Edredom:")
+        duvetLabel.grid(row=2,column=6,padx=10,pady=10,sticky=tk.W)
+
+        duvetNum = ttk.Label(statsFrame,text="##")
+        duvetNum.grid(row=2,column=7,padx=10,pady=10,sticky=tk.W)
+
+        bathLabel = ttk.Label(statsFrame, text="Itens de Banho:")
+        bathLabel.grid(row=3,column=0,padx=10,pady=10,sticky=tk.W)
+
+        bathNum = ttk.Label(statsFrame,text="##")
+        bathNum.grid(row=3,column=1,padx=10,pady=10,sticky=tk.W)
+
+        bathtowelLabel = ttk.Label(statsFrame,text="Toalha de Banho:")
+        bathtowelLabel.grid(row=3,column=2,padx=10,pady=10,sticky=tk.W)
+
+        bathtowelNum = ttk.Label(statsFrame,text="##")
+        bathtowelNum.grid(row=3,column=3,padx=10,pady=10,sticky=tk.W)
+
+        facetowelLabel = ttk.Label(statsFrame,text="Toalha de Rosto:")
+        facetowelLabel.grid(row=3,column=4,padx=10,pady=10,sticky=tk.W)
+
+        facetowelNum = ttk.Label(statsFrame,text="##")
+        facetowelNum.grid(row=3,column=5,padx=10,pady=10,sticky=tk.W)
+
+        bathmatLabel = ttk.Label(statsFrame,text="Tapete banheiro:")
+        bathmatLabel.grid(row=3,column=6,padx=10,pady=10,sticky=tk.W)
+
+        bathmatNum = ttk.Label(statsFrame,text="##")
+        bathmatNum.grid(row=3,column=7,padx=10,pady=10,sticky=tk.W)
+
+    def seeTags(self,controller):
+        self.pack_forget()
+
+        controller.show_frame(tagList)
+
     def total_tags(self):
 
         r = cook.get(URL+"/total_tags")
@@ -230,6 +303,50 @@ class Menu(tk.Frame):
             err = "Problema ao se conectar ao servidor!"
             messagebox.showinfo("Alerta", err)
 
+
+class tagList(tk.Frame):
+ #(tag_id,aquisition_date, category, sub_category, supplier, clean, damage, status, staff_name)
+    def __init__(self, parent, controller):
+
+        ttk.Frame.__init__(self, parent)
+
+        cats = ["ID","Data de Aquisição","Categoria","Subcategoria","Fornecedor","Limpo?","Danificado?","Status"]
+        
+        returnBtn = ttk.Button(self,text="Voltar", command=lambda: self.returnMenu(controller))
+        returnBtn.grid(row=0,padx=10,pady=10)
+
+        label = ttk.Label(self, text="INVENTÁRIO", font=LARGEFONT)
+        label.grid(row=1, padx=10, pady=10,columnspan=len(cats), sticky="N")
+
+        i=0
+        for cat in cats:
+            e = ttk.Label(self,text=cat)
+            e.grid(row=2,column=i,padx=10,pady=10)
+            i+=1
+
+        
+
+        # items = cook.get(URL+"/get_tags")
+        # m = 2
+        # for item in items:
+        #     print(item)
+        #     for j in range(len(item)-1):
+        #         e = ttk.Label(self,text=item[j])
+        #         e.grid(row=m,column=j,padx=10,pady=10)
+        #     m+=1
+        # button1 = ttk.Button(self, text="Page 1",
+        #                      command=lambda: controller.show_frame(Page1))
+
+        # button1.grid(row=1, column=1, padx=10, pady=10)
+
+        # button2 = ttk.Button(self, text="Page 2",
+        #                      command=lambda: controller.show_frame(Page2))
+
+        # button2.grid(row=2, column=1, padx=10, pady=10)
+
+    def returnMenu(self,controller):
+        self.pack_forget()
+        controller.show_frame(Menu)
 
 class StartPage(tk.Frame):
 
