@@ -16,6 +16,8 @@ totalNum = None
 discardedNum = None
 availableNum = None
 dirtyNum = None
+bedNum = None
+sheetNum = None
 
 class tkinterApp(tk.Tk):
 
@@ -105,6 +107,7 @@ class LoginPage(tk.Frame):
         global discardedNum
         global availableNum
         global dirtyNum
+        global sheetNum
         self.pack_forget()
         tags = cook.get(URL+"/total_tags")
         tags = tags.json()
@@ -113,18 +116,16 @@ class LoginPage(tk.Frame):
         discarded = items["discarded"]
         available = items["available"]
         dirty = items["dirty"]
-        # for cat in cats:
-        #     #label da categoria 
-        #     print subcat in cats[cat]:
-        #     #label das subcats
         bed = items["bed"]
-        bed_items = items["bed_items"]
+        sheet = items["bed_items"]["Lençol"]
         bath = items["bath"]
         bath_items = items["bath_items"]
         totalNum['text']=total
         discardedNum['text'] = discarded
         availableNum['text'] = available
         dirtyNum['text'] = dirty
+        bedNum['text'] = bed
+        sheetNum['text'] = sheet
         controller.show_frame(Menu)
      
 
@@ -136,6 +137,8 @@ class Menu(tk.Frame):
         global discardedNum
         global availableNum
         global dirtyNum
+        global bedNum
+        global sheetNum
 
         ttk.Frame.__init__(self, parent)
         
@@ -199,8 +202,17 @@ class Menu(tk.Frame):
         dirtyNum = ttk.Label(statsFrame,text="##")
         dirtyNum.grid(row=1,column=3,padx=10,pady=10,sticky=tk.W)
 
+        bedLabel = ttk.Label(statsFrame, text="Itens de Cama:")
+        bedLabel.grid(row=2,column=0,padx=10,pady=10,sticky=tk.W)
         
+        bedNum = ttk.Label(statsFrame,text="##")
+        bedNum.grid(row=2,column=1,padx=10,pady=10,sticky=tk.W)
 
+        sheetLabel = ttk.Label(statsFrame,text="Lençol:")
+        sheetLabel.grid(row=2,column=2,padx=10,pady=10,sticky=tk.W)
+
+        sheetNum = ttk.Label(statsFrame,text="##")
+        sheetNum.grid(row=2,column=3,padx=10,pady=10,sticky=tk.W)
 
     def total_tags(self):
 
