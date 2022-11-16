@@ -3,6 +3,11 @@ import tkinter as tk
 import tkinter.ttk as ttk
 import requests
 from tkinter import messagebox
+from serial.tools import list_ports
+import serial
+from time import sleep
+from collections import deque
+from threading import *
 # from enum import Enum
 # from tkcalendar import DateEntry
 
@@ -24,6 +29,11 @@ bathNum = None
 bathtowelNum = None
 facetowelNum = None
 bathmatNum = None
+countFlag = 0
+messageQueue = deque()
+# tagsNum = None
+# countBtn = None
+# arduinoLabel = None
 
 class tkinterApp(tk.Tk):
 
@@ -40,7 +50,7 @@ class tkinterApp(tk.Tk):
 
         self.frames = {}
 
-        for F in (LoginPage, Menu, tagList, StartPage, Page1, Page2):
+        for F in (LoginPage, Menu, tagList, tagCount, StartPage, Page1, Page2):
 
             frame = F(container, self)
 
@@ -100,6 +110,12 @@ class tkinterApp(tk.Tk):
             bathtowelNum["text"] = bathtowel
             facetowelNum["text"] = facetowel
             bathmatNum['text'] = bathmat
+        # elif cont == tagCount:
+        #     global tagsNum
+        #     global countBtn
+        #     global arduinoLabel
+        #     setArduino(arduinoLabel,countBtn)
+        #     updateTagLabel(tagsNum)
 
 class LoginPage(tk.Frame):
 
@@ -183,7 +199,7 @@ class Menu(tk.Frame):
         # menuFrame.grid(row=0, column=0, padx=10, pady=10, sticky="W")
         menuFrame.grid(row=0,padx=10,pady=10,sticky=tk.W)
 
-        countTagButton = ttk.Button(menuFrame,text="Ler Tags")
+        countTagButton = ttk.Button(menuFrame,text="Ler Tags", command= lambda: self.countTags(controller))
         countTagButton.grid(row=0,padx=10,pady=10,sticky=tk.W)
 
         tagListButton = ttk.Button(menuFrame,text="Lista de items",command= lambda: self.seeTags(controller))
@@ -286,6 +302,11 @@ class Menu(tk.Frame):
         self.pack_forget()
 
         controller.show_frame(tagList)
+    
+    def countTags(self,controller):
+        self.pack_forget()
+
+        controller.show_frame(tagCount)
 
     def total_tags(self):
 
@@ -324,29 +345,101 @@ class tagList(tk.Frame):
             e.grid(row=2,column=i,padx=10,pady=10)
             i+=1
 
-        
+    def returnMenu(self,controller):
+        self.pack_forget()
+        controller.show_frame(Menu)
 
-        # items = cook.get(URL+"/get_tags")
-        # m = 2
-        # for item in items:
-        #     print(item)
-        #     for j in range(len(item)-1):
-        #         e = ttk.Label(self,text=item[j])
-        #         e.grid(row=m,column=j,padx=10,pady=10)
-        #     m+=1
-        # button1 = ttk.Button(self, text="Page 1",
-        #                      command=lambda: controller.show_frame(Page1))
+class tagCount(tk.Frame):
 
-        # button1.grid(row=1, column=1, padx=10, pady=10)
+    def __init__(self, parent, controller):
+        # global tagsNum
+        # global countBtn
+        # global arduinoLabel
+        ttk.Frame.__init__(self, parent)
 
-        # button2 = ttk.Button(self, text="Page 2",
-        #                      command=lambda: controller.show_frame(Page2))
+        label = ttk.Label(self, text="Leitura de tags", font=LARGEFONT)
+        label.grid(row=0, padx=10, pady=10, sticky=tk.N)
 
-        # button2.grid(row=2, column=1, padx=10, pady=10)
+        arduinoLabel = ttk.Label(self,text="Aguardando...")
+        arduinoLabel.grid(row=1, padx=10, pady=10, sticky=tk.N)
+
+        tagsLabel = ttk.Label(self,text="Número de tags lidas: ")
+        tagsLabel.grid(row=2,column=0,padx=10,pady=10,sticky=tk.W)
+
+        tagsNum = ttk.Label(self,text="0")
+        tagsNum.grid(row=2,column=1,padx=10,pady=10)
+
+        countBtn = ttk.Button(self,text="Contar", command=lambda: startCount(countBtn,tagsNum))
+        countBtn.grid(row=3,padx=10,pady=10)
+
+        returnBtn = ttk.Button(self,text="Voltar", command=lambda: self.returnMenu(controller))
+        returnBtn.grid(row=4,padx=10,pady=10)
+
+        updateTagLabel(tagsNum)
+        setArduino(arduinoLabel,countBtn)
 
     def returnMenu(self,controller):
         self.pack_forget()
         controller.show_frame(Menu)
+
+def startCount(btn,label):
+    global countFlag
+    countFlag = 0
+    label['text'] = 0
+    t1 = Thread(target = readTags())
+    t1.setDaemon(True)
+    t1.start()
+    btn.configure(text = "Parar", command = lambda: stopCount(btn,label))
+
+def stopCount(btn,label):
+    global countFlag
+    countFlag = 1
+    btn.configure(text = "Contar", command = lambda: startCount(btn,label))
+
+
+    
+
+def readTags():
+    global countFlag
+    inputList = []
+    port = findArduinoPort()
+    ser = serial.Serial(port, 9600)
+    while countFlag == 0:
+        serBytes = ser.readline()
+        if countFlag == 0:
+            decodedBytes = str(serBytes[1:len(serBytes)-2].decode("utf-8")).replace(' ','')
+            if inputList.count(decodedBytes) == 0:
+                inputList.append(decodedBytes)
+                messageQueue.append(len(inputList))
+                sleep(1)
+                print(f'Added {decodedBytes} to the read tags list.')
+
+
+def setArduino(label,button):
+    global countFlag
+    port = findArduinoPort()
+    if port is not None:
+        label['text'] = f'Arduino conectado na porta {port}'
+        button.state(['!disabled'])
+    else:
+        label['text'] = 'Arduino não está conectado'
+        button.state(['disabled'])
+    
+    label.after(1000,setArduino,label,button)
+
+
+def findArduinoPort():
+        devices = list(list_ports.comports())
+        for device in devices:
+            manufacturer = device.manufacturer
+            if manufacturer is not None and 'arduino' in manufacturer.lower():
+                return device.device
+
+def updateTagLabel(num):
+    try:
+        num['text'] = messageQueue.popleft()
+    except IndexError: pass
+    num.after(1000,updateTagLabel,num)
 
 class StartPage(tk.Frame):
 
@@ -366,6 +459,8 @@ class StartPage(tk.Frame):
                              command=lambda: controller.show_frame(Page2))
 
         button2.grid(row=2, column=1, padx=10, pady=10)
+
+
 
 
 class Page1(tk.Frame):
@@ -495,4 +590,5 @@ class Page2(tk.Frame):
 if __name__ == '__main__':
     app = tkinterApp()
     
+
     app.mainloop()
