@@ -32,6 +32,8 @@ bathmatNum = None
 countFlag = 0
 messageQueue = deque()
 inputList = []
+ser = None
+t1 = None
 # tagsNum = None
 # countBtn = None
 # arduinoLabel = None
@@ -385,12 +387,16 @@ class tagCount(tk.Frame):
 
 def startCount(btn,label):
     global countFlag
+    global t1
     countFlag = 0
     label['text'] = 0
-    t1 = Thread(target = readTags())
+    btn.configure(text = "Parar", command = lambda: stopCount(btn,label))
+    if t1 is not None:
+        t1.join()
+    t1 = Thread(target = readTags)
     t1.setDaemon(True)
     t1.start()
-    btn.configure(text = "Parar", command = lambda: stopCount(btn,label))
+    
 
 def stopCount(btn,label):
     global countFlag
@@ -403,14 +409,18 @@ def stopCount(btn,label):
 def readTags():
     global countFlag
     global inputList
+    global ser
     inputList = []
     port = findArduinoPort()
-    ser = serial.Serial(port, 9600)
+    if ser is not None:
+        ser.close()
+        sleep(1)
+    ser = serial.Serial(port, 9600, timeout=1)
     while countFlag == 0:
         serBytes = ser.readline()
         if countFlag == 0:
             decodedBytes = str(serBytes[1:len(serBytes)-2].decode("utf-8")).replace(' ','')
-            if inputList.count(decodedBytes) == 0:
+            if inputList.count(decodedBytes) == 0 and decodedBytes != '':
                 inputList.append(decodedBytes)
                 messageQueue.append(len(inputList))
                 sleep(1)
