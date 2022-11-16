@@ -34,6 +34,8 @@ messageQueue = deque()
 inputList = []
 ser = None
 t1 = None
+regTags = []
+unregTags = []
 # tagsNum = None
 # countBtn = None
 # arduinoLabel = None
@@ -375,13 +377,23 @@ class tagCount(tk.Frame):
         countBtn = ttk.Button(self,text="Contar", command=lambda: startCount(countBtn,tagsNum))
         countBtn.grid(row=3,padx=10,pady=10)
 
-        returnBtn = ttk.Button(self,text="Voltar", command=lambda: self.returnMenu(controller))
-        returnBtn.grid(row=4,padx=10,pady=10)
+        changeBtn = ttk.Button(self,text="Alterar tags registradas", command=lambda: startCount(countBtn,tagsNum))
+        changeBtn.grid(row=4,padx=10,pady=10)
+        changeBtn.state(['disabled'])
+
+        regBtn = ttk.Button(self,text="Registrar tags", command=lambda: startCount(countBtn,tagsNum))
+        regBtn.grid(row=5,padx=10,pady=10) 
+        regBtn.state(['disabled'])
+
+
+        returnBtn = ttk.Button(self,text="Voltar", command=lambda: self.returnMenu(controller,countBtn,tagsNum))
+        returnBtn.grid(row=6,padx=10,pady=10)
 
         updateTagLabel(tagsNum)
         setArduino(arduinoLabel,countBtn)
 
-    def returnMenu(self,controller):
+    def returnMenu(self,controller,button,label):
+        # stopCount(button,label)
         self.pack_forget()
         controller.show_frame(Menu)
 
@@ -400,10 +412,21 @@ def startCount(btn,label):
 
 def stopCount(btn,label):
     global countFlag
+    global inputList
     countFlag = 1
     btn.configure(text = "Contar", command = lambda: startCount(btn,label))
+    if len(inputList) != 0:
+        checkTags(inputList)
 
-
+def checkTags(tag_list):
+    global unregTags
+    global regTags
+    body = {
+        "tags": tag_list
+    }
+    r = cook.post(URL+"/check_tags",json=(body),verify=True)
+    unregTags = r.json()["non_registered"]
+    regTags = r.json()["registered"]
     
 
 def readTags():
@@ -435,6 +458,7 @@ def setArduino(label,button):
         button.state(['!disabled'])
     else:
         label['text'] = 'Arduino não está conectado'
+        # stopCount(button,label2)
         button.state(['disabled'])
     
     label.after(1000,setArduino,label,button)
