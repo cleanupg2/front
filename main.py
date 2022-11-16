@@ -31,6 +31,7 @@ facetowelNum = None
 bathmatNum = None
 countFlag = 0
 messageQueue = deque()
+inputList = []
 # tagsNum = None
 # countBtn = None
 # arduinoLabel = None
@@ -401,6 +402,7 @@ def stopCount(btn,label):
 
 def readTags():
     global countFlag
+    global inputList
     inputList = []
     port = findArduinoPort()
     ser = serial.Serial(port, 9600)
