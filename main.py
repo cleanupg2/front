@@ -8,8 +8,7 @@ import serial
 from time import sleep
 from collections import deque
 from threading import *
-# from enum import Enum
-# from tkcalendar import DateEntry
+from tkcalendar import DateEntry
 
 LARGEFONT = ("Verdana", 35)
 URL = "http://127.0.0.1:9000"
@@ -36,9 +35,16 @@ ser = None
 t1 = None
 regTags = []
 unregTags = []
+tagsWarn = None
+regBtn = None
+changeBtn = None
+itemList = []
 # tagsNum = None
 # countBtn = None
 # arduinoLabel = None
+
+subcats = ["Toalha de banho", "Toalha de rosto", "Tapete banheiro","Lençol", "Fronha", "Edredom"]
+suppliers = ["Fornecedor 1","Fornecedor 2","Fornecedor 3","Fornecedor 4"]
 
 class tkinterApp(tk.Tk):
 
@@ -55,7 +61,7 @@ class tkinterApp(tk.Tk):
 
         self.frames = {}
 
-        for F in (LoginPage, Menu, tagList, tagCount, StartPage, Page1, Page2):
+        for F in (LoginPage, Menu, TagList, TagCount,TagRegPage, TagChangePage, LogList, Page1, Page2):
 
             frame = F(container, self)
 
@@ -67,7 +73,7 @@ class tkinterApp(tk.Tk):
     def show_frame(self, cont):  
         frame = self.frames[cont]           
         frame.pack( expand=True,fill=tk.NONE)
-        if cont == tagList:
+        if cont == TagList:
             items = cook.get(URL+"/get_tags").json()
             m = 3
             for item in items:
@@ -75,6 +81,18 @@ class tkinterApp(tk.Tk):
                     e = ttk.Label(frame,text=item[j])
                     e.grid(row=m,column=j,padx=10,pady=10)
                 m+=1
+        elif cont == LogList:
+            logs = cook.get(URL+"/get_log").json()
+            m=3
+            for log in logs:
+                for j in range(len(log)):
+                    e = ttk.Label(frame,text=log[j])
+                    e.grid(row=m,column=j,padx=10,pady=10)
+                m+=1
+        elif cont == TagChangePage:
+            global regTags
+            m = frame.updatePage()
+            frame.renderChange(m)
         elif cont == Menu:
             global tags
             global totalNum
@@ -180,8 +198,6 @@ class LoginPage(tk.Frame):
         self.pack_forget()
         controller.show_frame(Menu)
      
-
-
 class Menu(tk.Frame):
 
     def __init__(self, parent, controller):
@@ -210,20 +226,14 @@ class Menu(tk.Frame):
         tagListButton = ttk.Button(menuFrame,text="Lista de items",command= lambda: self.seeTags(controller))
         tagListButton.grid(row=1,padx=10,pady=10,sticky=tk.W)
 
-        supListButton = ttk.Button(menuFrame,text="Lista de Fornecedores")
-        supListButton.grid(row=2,padx=10,pady=10,sticky=tk.W)
-
         adminDash = ttk.Labelframe(self,text="Dashboard Administrativo")
         adminDash.grid(row=1,padx=10,pady=10,sticky=tk.W)
 
         userRegButton = ttk.Button(adminDash,text="Cadastrar Usuários")
         userRegButton.grid(row=0,padx=10,pady=10,sticky=tk.W)
 
-        logButton = ttk.Button(adminDash,text="Histórico de Eventos")
+        logButton = ttk.Button(adminDash,text="Histórico de Eventos", command=lambda: self.seeLog(controller))
         logButton.grid(row=2,padx=10,pady=10,sticky=tk.W)
-
-        supRegButton = ttk.Button(adminDash,text="Registrar Fornecedores")
-        supRegButton.grid(row=1,padx=10,pady=10,sticky=tk.W)
         
         logoutButton = ttk.Button(self,text="LOGOUT",command=lambda: self.logout_request(controller))
         logoutButton.grid(row=2,padx=10,pady=10)
@@ -306,12 +316,16 @@ class Menu(tk.Frame):
     def seeTags(self,controller):
         self.pack_forget()
 
-        controller.show_frame(tagList)
+        controller.show_frame(TagList)
     
     def countTags(self,controller):
         self.pack_forget()
 
-        controller.show_frame(tagCount)
+        controller.show_frame(TagCount)
+
+    def seeLog(self,controller):
+        self.pack_forget()
+        controller.show_frame(LogList)
 
     def total_tags(self):
 
@@ -329,8 +343,7 @@ class Menu(tk.Frame):
             err = "Problema ao se conectar ao servidor!"
             messagebox.showinfo("Alerta", err)
 
-
-class tagList(tk.Frame):
+class TagList(tk.Frame):
  #(tag_id,aquisition_date, category, sub_category, supplier, clean, damage, status, staff_name)
     def __init__(self, parent, controller):
 
@@ -354,9 +367,12 @@ class tagList(tk.Frame):
         self.pack_forget()
         controller.show_frame(Menu)
 
-class tagCount(tk.Frame):
+class TagCount(tk.Frame):
 
     def __init__(self, parent, controller):
+        global tagsWarn
+        global regBtn
+        global changeBtn
         # global tagsNum
         # global countBtn
         # global arduinoLabel
@@ -377,29 +393,244 @@ class tagCount(tk.Frame):
         countBtn = ttk.Button(self,text="Contar", command=lambda: startCount(countBtn,tagsNum))
         countBtn.grid(row=3,padx=10,pady=10)
 
-        changeBtn = ttk.Button(self,text="Alterar tags registradas", command=lambda: startCount(countBtn,tagsNum))
-        changeBtn.grid(row=4,padx=10,pady=10)
+        tagsWarn = ttk.Label(self, text=None, foreground='#FF0000')
+        tagsWarn.grid(row=4,padx=10,pady=10)
+
+        changeBtn = ttk.Button(self,text="Visualizar tags registradas", command=lambda: self.goToChange(controller))
+        changeBtn.grid(row=5,padx=10,pady=10)
         changeBtn.state(['disabled'])
 
-        regBtn = ttk.Button(self,text="Registrar tags", command=lambda: startCount(countBtn,tagsNum))
-        regBtn.grid(row=5,padx=10,pady=10) 
+        regBtn = ttk.Button(self,text="Registrar tags", command=lambda: self.goToReg(controller))
+        regBtn.grid(row=6,padx=10,pady=10) 
         regBtn.state(['disabled'])
 
 
-        returnBtn = ttk.Button(self,text="Voltar", command=lambda: self.returnMenu(controller,countBtn,tagsNum))
-        returnBtn.grid(row=6,padx=10,pady=10)
+        returnBtn = ttk.Button(self,text="Voltar", command=lambda: self.returnMenu(controller))
+        returnBtn.grid(row=7,padx=10,pady=10)
 
         updateTagLabel(tagsNum)
         setArduino(arduinoLabel,countBtn)
 
-    def returnMenu(self,controller,button,label):
+    def returnMenu(self,controller):
         # stopCount(button,label)
         self.pack_forget()
         controller.show_frame(Menu)
 
+    def goToReg(self,controller):
+        self.pack_forget()
+        controller.show_frame(TagRegPage)
+
+    def goToChange(self,controller):
+        self.pack_forget()
+        global regTags
+        # m = 4
+        # for regTag in regTags:
+        #     for j in range(len(regTag[0])-1):
+        #         print(regTag)
+        #         print(regTag[0][0])
+        #         e = ttk.Label(se,text=regTag[0][j])
+        #         e.grid(row=m,column=j,padx=10,pady=10)
+        #     m+=1
+        controller.show_frame(TagChangePage)
+
+class TagRegPage(tk.Frame):
+
+    def __init__(self, parent, controller):
+        self.err = None
+        tk.Frame.__init__(self, parent)
+        
+        title = ttk.Label(self, text="Registro de Tags", font=LARGEFONT)
+        title.grid(row=0,columnspan=2, padx=10, pady=10, sticky="N")
+
+        returnBtn = ttk.Button(self,text="Voltar", command=lambda: self.returnPage(controller))
+        returnBtn.grid(row=1,columnspan=2,padx=10,pady=10)
+
+        self.regWarning = ttk.Label(self, text=None, foreground='#FF0000')
+        self.regWarning.grid(row=2,padx=10,pady=10)
+
+        aqDate = ttk.Label(self,text="Data de aquisição: ")
+        aqDate.grid(row=3,column=0,padx=10,pady=10)
+
+        cal = DateEntry(self,selectmode='day')
+        cal.grid( row=3,column=1,padx=10,pady=10)
+
+        catLabel = ttk.Label(self,text="Categoria:")
+        catLabel.grid(row=4,column=0,padx=10,pady=10)
+
+        cat = tk.StringVar(self)
+        catMenu = ttk.OptionMenu(self,cat,*subcats)
+        catMenu.grid(row=4,column=1,padx=10,pady=10)
+
+        supLabel = ttk.Label(self,text="Fornecedor:")
+        supLabel.grid(row=5,column=0,padx=10,pady=10)
+
+        sup = tk.StringVar(self)
+        supMenu = ttk.OptionMenu(self,sup,*suppliers)
+        supMenu.grid(row=5,column=1,padx=10,pady=10)
+
+        clean = tk.IntVar(self)
+        cleanLabel = ttk.Label(self,text="Limpo?")
+        cleanLabel.grid(row=6,column=0,padx=10,pady=10)
+
+        cleanCheck = ttk.Checkbutton(self,variable=clean,onvalue=1,offvalue=0)
+        cleanCheck.grid(row=6,column=1,padx=10,pady=10)
+
+        damage = tk.IntVar(self)
+        dmgLabel = ttk.Label(self,text="Danificado?")
+        dmgLabel.grid(row=7,column=0,padx=10,pady=10)
+
+        dmgCheck = ttk.Checkbutton(self,variable=damage,onvalue=1,offvalue=0)
+        dmgCheck.grid(row=7,column=1,padx=10,pady=10)
+
+        status = tk.IntVar(self)
+        statusLabel = ttk.Label(self,text="Ativo?")
+        statusLabel.grid(row=8,column=0,padx=10,pady=10)
+
+        statusCheck = ttk.Checkbutton(self,variable=status,onvalue=1,offvalue=0)
+        statusCheck.grid(row=8,column=1,padx=10,pady=10)
+
+        submitBtn = ttk.Button(self,text="Registrar Tags", command=lambda: self.submit(cal,cat,sup,clean,damage,status))
+        submitBtn.grid(row=9,column=0,columnspan=2,padx=10,pady=10)
+             
+    def returnPage(self,controller):
+        self.pack_forget()
+        controller.show_frame(TagCount)
+
+    def submit(self, date, cat, sup, clean, damage, status):
+
+        body = {
+            "tag_list": unregTags,
+            "aquisition_date": date.get(),
+            "category": cat.get(),
+            "supplier": sup.get(),
+            "clean": clean.get(),
+            "damage": damage.get(),
+            "status": status.get()
+        }
+        r = cook.post(URL+"/reg_tags", json=(body), verify=True)
+        sleep(1)
+        
+        self.regWarning['text'] = r.json()["message"]
+                
+class TagChangePage(tk.Frame):
+
+    def __init__(self, parent, controller):
+        self.err = None
+        self.cont = controller
+        tk.Frame.__init__(self, parent)
+        
+        cats = ["ID","Data de Aquisição","Categoria","Subcategoria","Fornecedor","Limpo?","Danificado?","Status"]
+
+        returnBtn = ttk.Button(self,text="Voltar", command=lambda: self.returnPage(controller))
+        returnBtn.grid(row=0,padx=10,pady=10)
+
+        title = ttk.Label(self, text="Visualização de Tags", font=LARGEFONT)
+        title.grid(row=1,columnspan=len(cats), padx=10, pady=10, sticky="N")
+
+        
+
+        self.regWarning = ttk.Label(self, text=None, foreground='#FF0000')
+        self.regWarning.grid(row=2,padx=10,pady=10)
+
+
+
+        i=0
+        for cat in cats:
+            e = ttk.Label(self,text=cat)
+            e.grid(row=3,column=i,padx=10,pady=10)
+            i+=1
+
+    def returnPage(self,controller):
+        self.pack_forget()
+        controller.show_frame(TagCount)
+
+    def renderChange(self,m):
+        
+        events = ["Limpa","Suja","Ativa","Inativa","Danificada","Restaurada"]
+
+        changeLabel = ttk.Label(self,text="Alterar Tag")
+        changeLabel.grid(row=m,padx=10,pady=10)
+        tagVals = []
+        tag = tk.StringVar(self)
+        for regTag in regTags:
+            tagVals.append(regTag[0][0])
+
+        tagLabel = ttk.Label(self,text="Tag: ")
+        tagLabel.grid(row=m+1,column=0,padx=10,pady=10)
+        tagOption = ttk.OptionMenu(self,tag,*tagVals)
+        tagOption.grid(row=m+1,column=1,padx=10,pady=10)
+ 
+        event = tk.StringVar(self)
+        eventLabel = ttk.Label(self,text="Evento: ")
+        eventLabel.grid(row=m+2,column=0,padx=10,pady=10)
+        eventOption = ttk.OptionMenu(self,event,*events)
+        eventOption.grid(row=m+2,column=1,padx=10,pady=10)
+
+        subBtn = ttk.Button(self,text="Alterar",command=lambda: self.submitChange(tag,event))
+        subBtn.grid(row=m+3,padx=10,pady=10)
+
+    def submitChange(self,tag,event):
+        tag = tag.get()
+        event = event.get()
+        body = {
+            "tag": tag,
+            "event": event
+        }
+        print(body)
+        r = cook.post(URL+"/change_tags", json=(body), verify=True)
+        if r.text == "OK":
+            self.regWarning['text']="Alterado com sucesso!"
+
+
+    def updatePage(self):
+        global regTags
+        global itemList
+        m = 4
+        for item in itemList:
+            item.grid_forget()
+        for regTag in regTags:
+            for j in range(len(regTag[0])-1):
+                print(regTag)
+                print(regTag[0][0])
+                e = ttk.Label(self,text=regTag[0][j])
+                itemList.append(e)
+                e.grid(row=m,column=j,padx=10,pady=10)
+
+            m+=1
+        
+        return m
+
+
+class LogList(tk.Frame):
+ #(tag_id,event,date,staffname)
+    def __init__(self, parent, controller):
+
+        ttk.Frame.__init__(self, parent)
+
+        cats = ["ID","Evento","Data","Nome"]
+        
+        returnBtn = ttk.Button(self,text="Voltar", command=lambda: self.returnMenu(controller))
+        returnBtn.grid(row=0,padx=10,pady=10)
+
+        label = ttk.Label(self, text="HISTÓRICO", font=LARGEFONT)
+        label.grid(row=1, padx=10, pady=10,columnspan=len(cats), sticky="N")
+
+        i=0
+        for cat in cats:
+            e = ttk.Label(self,text=cat)
+            e.grid(row=2,column=i,padx=10,pady=10)
+            i+=1
+
+    def returnMenu(self,controller):
+        self.pack_forget()
+        controller.show_frame(Menu)
+
+
 def startCount(btn,label):
     global countFlag
     global t1
+    global tagsWarn
+    tagsWarn['text'] = " "
     countFlag = 0
     label['text'] = 0
     btn.configure(text = "Parar", command = lambda: stopCount(btn,label))
@@ -409,26 +640,40 @@ def startCount(btn,label):
     t1.setDaemon(True)
     t1.start()
     
-
 def stopCount(btn,label):
     global countFlag
     global inputList
+    
     countFlag = 1
     btn.configure(text = "Contar", command = lambda: startCount(btn,label))
     if len(inputList) != 0:
         checkTags(inputList)
 
-def checkTags(tag_list):
+def checkTags(tagList):
     global unregTags
     global regTags
+    global tagsWarn
+    global changeBtn
+    global regBtn
     body = {
-        "tags": tag_list
+        "tags": tagList
     }
     r = cook.post(URL+"/check_tags",json=(body),verify=True)
     unregTags = r.json()["non_registered"]
     regTags = r.json()["registered"]
+    if len(unregTags) > 0 and len(regTags) > 0:
+        tagsWarn['text'] = f"{len(unregTags)} tags não registradas e {len(regTags)} tags registradas foram detectadas"
+        changeBtn.state(['!disabled'])
+        regBtn.state(['!disabled'])
+    elif len(unregTags) > 0:
+        tagsWarn['text'] = f"{len(unregTags)} tags não registradas foram detectadas"
+        changeBtn.state(['disabled'])
+        regBtn.state(['!disabled'])
+    elif len(regTags) > 0:
+        tagsWarn['text'] = f"{len(regTags)} tags registradas foram detectadas"
+        changeBtn.state(['!disabled'])
+        regBtn.state(['disabled'])
     
-
 def readTags():
     global countFlag
     global inputList
@@ -449,7 +694,6 @@ def readTags():
                 sleep(1)
                 print(f'Added {decodedBytes} to the read tags list.')
 
-
 def setArduino(label,button):
     global countFlag
     port = findArduinoPort()
@@ -463,7 +707,6 @@ def setArduino(label,button):
     
     label.after(1000,setArduino,label,button)
 
-
 def findArduinoPort():
         devices = list(list_ports.comports())
         for device in devices:
@@ -476,6 +719,7 @@ def updateTagLabel(num):
         num['text'] = messageQueue.popleft()
     except IndexError: pass
     num.after(1000,updateTagLabel,num)
+
 
 class StartPage(tk.Frame):
 
@@ -538,90 +782,6 @@ class Page2(tk.Frame):
 
         button2.grid(row=2, column=1, padx=10, pady=10)
 
-
-# class window_type(Enum):
-#     # Vai ser necessario, tela de login, menu, contagem, registro de tags, painel admin, etc...
-#     main = 1
-#     frame = 2
-#     toplevel = 3
-
-
-# class GUI():
-
-#     def __init__(self, wdw_type, title=None, frame=None, home=None) -> None:
-#         if wdw_type == window_type.main:
-#             self.window = tk.Tk()
-#             # self.window.geometry('800x600')
-#             MainMenu = tk.Menu(self.window)
-#             fileMenu = tk.Menu(MainMenu, tearoff=0)
-#             fileMenu.add_command(label="Sair", command=self.window.destroy)
-#             MainMenu.add_cascade(label="Opções", menu=fileMenu)
-#             self.window.config(menu=MainMenu)
-#         elif wdw_type == window_type.frame:
-#             self.window = frame
-#         else:
-#             self.window = tk.Toplevel()
-#         if title is not None:
-#             self.window.title(title)
-
-#     def create_Label(self, textstr, rowint=None, columnint=None, columnspanint=None, stickystr=None, padxint=None, padyint=None, show=True):
-#         name = ttk.Label(self.window, text=textstr)
-#         if show:
-#             name.grid(row=rowint, column=columnint, columnspan=columnspanint,
-#                       sticky=stickystr, padx=padxint, pady=padyint)
-#         return name
-
-#     def create_LabelFrame(self, textstr, rowint=None, columnint=None, columnspanint=None, stickystr=None, padxint=None, padyint=None, show=True, rowspanint=None):
-#         name = ttk.LabelFrame(self.window, text=textstr,)
-#         if show:
-#             name.grid(row=rowint, column=columnint, columnspan=columnspanint,
-#                       sticky=stickystr, padx=padxint, pady=padyint, rowspan=rowspanint)
-#         return GUI(window_type.frame, frame=name)
-
-#     def create_Entry(self, rowint=None, columnint=None, columnspanint=None, stickystr=None, padxint=None, padyint=None, show_pw=None, show_entry=True):
-#         name = ttk.Entry(self.window, show=show_pw)
-#         if show_entry:
-#             name.grid(row=rowint, column=columnint, columnspan=columnspanint,
-#                       sticky=stickystr, padx=padxint, pady=padyint)
-#         return name
-
-#     def create_Button(self, textstr, commandf=None, rowint=None, columnint=None, columnspanint=None, stickystr=None, padxint=None, padyint=None, show=True, ipadxint=None, ipadyint=None, state=None):
-#         name = ttk.Button(self.window, text=textstr,
-#                           command=commandf, state=state)
-#         if show:
-#             name.grid(row=rowint, column=columnint, columnspan=columnspanint,
-#                       sticky=stickystr, padx=padxint, pady=padyint, ipadx=ipadxint, ipady=ipadyint)
-#         return name
-
-#     def create_Combobox(self, textstr, rowint=None, columnint=None, columnspanint=None, stickystr=None, padxint=None, padyint=None, postcommandf=None, show=True):
-#         name = ttk.Combobox(self.window, postcommand=postcommandf)
-#         name.set(textstr)
-#         if show:
-#             name.grid(row=rowint, column=columnint, columnspan=columnspanint,
-#                       sticky=stickystr, padx=padxint, padyx=padyint)
-#         return name
-
-#     def create_DateEntry(self, rowint, columnint, var):
-#         name = DateEntry(self.window, selectmode='day',
-#                          date_pattern='dd/mm/yyyy', textvariable=var)
-#         name.grid(row=rowint, column=columnint)
-
-#     def create_Checkbutton(self, textstr, var=None, rowint=None, columnint=None, columnspanint=None, stickystr=None, padxint=None, padyint=None, show=True, ipadxint=None, ipadyint=None):
-#         name = ttk.Checkbutton(self.window, text=textstr, variable=var)
-#         if show:
-#             name.grid(row=rowint, column=columnint, columnspan=columnspanint,
-#                       sticky=stickystr, padx=padxint, pady=padyint, ipadx=ipadxint, ipady=ipadyint)
-#         return name
-
-
-# def create_IntVar():
-#     var = tk.IntVar()
-#     return var
-
-
-# def create_StringVar():
-#     var = tk.StringVar()
-#     return var
 
 if __name__ == '__main__':
     app = tkinterApp()
