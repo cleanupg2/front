@@ -46,13 +46,13 @@ itemList = []
 subcats = ["Toalha de banho", "Toalha de rosto", "Tapete banheiro","Lençol", "Fronha", "Edredom"]
 suppliers = ["Fornecedor 1","Fornecedor 2","Fornecedor 3","Fornecedor 4"]
 
-class tkinterApp(tk.Tk):
+class tkinterApp(tk.Tk): #Criando a janela do tkinter
 
     def __init__(self, *args, **kwargs):
 
         tk.Tk.__init__(self, *args, **kwargs)
-        self.geometry('800x600')
-        self.title("CleanUp!")
+        self.geometry('800x600') #tamanho de tela
+        self.title("CleanUp!") #titulo
         container = ttk.Frame(self)
         container.pack(side="top", fill="both", expand=True)
 
@@ -61,19 +61,19 @@ class tkinterApp(tk.Tk):
 
         self.frames = {}
 
-        for F in (LoginPage, Menu, TagList, TagCount,TagRegPage, TagChangePage, LogList, Page1, Page2):
+        for F in (LoginPage, Menu, TagList, TagCount,TagRegPage, TagChangePage, LogList): #Lista de Frames
 
             frame = F(container, self)
 
             self.frames[F] = frame
             # frame.grid(row=0, column=0)
 
-        self.show_frame(LoginPage)
+        self.show_frame(LoginPage) #Iniciando com a página de Login
 
-    def show_frame(self, cont):  
+    def show_frame(self, cont):  # Funcao para mostrar páginas
         frame = self.frames[cont]           
         frame.pack( expand=True,fill=tk.NONE)
-        if cont == TagList:
+        if cont == TagList: # Se a pagina for a inventario, mandar solicitacao para o back e e preencher a pagina
             items = cook.get(URL+"/get_tags").json()
             m = 3
             for item in items:
@@ -81,7 +81,7 @@ class tkinterApp(tk.Tk):
                     e = ttk.Label(frame,text=item[j])
                     e.grid(row=m,column=j,padx=10,pady=10)
                 m+=1
-        elif cont == LogList:
+        elif cont == LogList: # Se a pagina for o log, mandar solicitacao para o back e e preencher a pagina
             logs = cook.get(URL+"/get_log").json()
             m=3
             for log in logs:
@@ -93,7 +93,7 @@ class tkinterApp(tk.Tk):
             global regTags
             m = frame.updatePage()
             frame.renderChange(m)
-        elif cont == Menu:
+        elif cont == Menu: # Se a pagina for o menu, atualizar dashboard
             global tags
             global totalNum
             global discardedNum
@@ -169,7 +169,7 @@ class LoginPage(tk.Frame):
 
         lgnButton.grid(row=6, padx=10, pady=10)
 
-    def login(self, controller):
+    def login(self, controller): #funcao pra realizar login
         global User
         user_id = self.userEntry.get()
         pwd = self.pwdEntry.get()
@@ -194,7 +194,7 @@ class LoginPage(tk.Frame):
             self.loginWarning.grid(row=1, padx=10, pady=10)
             # messagebox.showinfo("Alerta", err)
 
-    def changePage(self, controller):
+    def changePage(self, controller): # apagar pagina atual e mostrar o menu
         self.pack_forget()
         controller.show_frame(Menu)
      
@@ -229,7 +229,7 @@ class Menu(tk.Frame):
         adminDash = ttk.Labelframe(self,text="Dashboard Administrativo")
         adminDash.grid(row=1,padx=10,pady=10,sticky=tk.W)
 
-        userRegButton = ttk.Button(adminDash,text="Cadastrar Usuários")
+        userRegButton = ttk.Button(adminDash,text="Cadastrar Usuários") # Nao deu tempo de incluir a funcionalidade de cadastrar usuarios no tkinter
         userRegButton.grid(row=0,padx=10,pady=10,sticky=tk.W)
 
         logButton = ttk.Button(adminDash,text="Histórico de Eventos", command=lambda: self.seeLog(controller))
@@ -313,17 +313,17 @@ class Menu(tk.Frame):
         bathmatNum = ttk.Label(statsFrame,text="##")
         bathmatNum.grid(row=3,column=7,padx=10,pady=10,sticky=tk.W)
 
-    def seeTags(self,controller):
+    def seeTags(self,controller): #ir para inventario
         self.pack_forget()
 
         controller.show_frame(TagList)
     
-    def countTags(self,controller):
+    def countTags(self,controller): #ir para contagem de tags
         self.pack_forget()
 
         controller.show_frame(TagCount)
 
-    def seeLog(self,controller):
+    def seeLog(self,controller): # ir para o historico de eventos
         self.pack_forget()
         controller.show_frame(LogList)
 
@@ -334,7 +334,7 @@ class Menu(tk.Frame):
 
         return tags
 
-    def logout_request(self,controller):
+    def logout_request(self,controller): #funcao de logout
         try:
             cook.post(URL+"/logout")
             self.pack_forget()
@@ -343,8 +343,8 @@ class Menu(tk.Frame):
             err = "Problema ao se conectar ao servidor!"
             messagebox.showinfo("Alerta", err)
 
-class TagList(tk.Frame):
- #(tag_id,aquisition_date, category, sub_category, supplier, clean, damage, status, staff_name)
+class TagList(tk.Frame): #Frame de Inventario
+ #(tag_id,aquisition_date, category, sub_category, supplier, clean, damage, status, staff_name) Cola de categorias para imprimir
     def __init__(self, parent, controller):
 
         ttk.Frame.__init__(self, parent)
@@ -363,11 +363,11 @@ class TagList(tk.Frame):
             e.grid(row=2,column=i,padx=10,pady=10)
             i+=1
 
-    def returnMenu(self,controller):
+    def returnMenu(self,controller): # retornar para o menu
         self.pack_forget()
         controller.show_frame(Menu)
 
-class TagCount(tk.Frame):
+class TagCount(tk.Frame): # contagem de tags
 
     def __init__(self, parent, controller):
         global tagsWarn
@@ -408,19 +408,19 @@ class TagCount(tk.Frame):
         returnBtn = ttk.Button(self,text="Voltar", command=lambda: self.returnMenu(controller))
         returnBtn.grid(row=7,padx=10,pady=10)
 
-        updateTagLabel(tagsNum)
-        setArduino(arduinoLabel,countBtn)
+        updateTagLabel(tagsNum) #funcao que atualiza o contador de tags lidas
+        setArduino(arduinoLabel,countBtn) #funcao que atualiza o status de conexao com o arduino
 
-    def returnMenu(self,controller):
+    def returnMenu(self,controller): #volta para o menu
         # stopCount(button,label)
         self.pack_forget()
         controller.show_frame(Menu)
 
-    def goToReg(self,controller):
+    def goToReg(self,controller): # vai para o registro de tags
         self.pack_forget()
         controller.show_frame(TagRegPage)
 
-    def goToChange(self,controller):
+    def goToChange(self,controller): #vai para a visualizacao e alteracao de tags
         self.pack_forget()
         global regTags
         # m = 4
@@ -433,7 +433,7 @@ class TagCount(tk.Frame):
         #     m+=1
         controller.show_frame(TagChangePage)
 
-class TagRegPage(tk.Frame):
+class TagRegPage(tk.Frame): #pagina de registro de tags
 
     def __init__(self, parent, controller):
         self.err = None
@@ -492,11 +492,11 @@ class TagRegPage(tk.Frame):
         submitBtn = ttk.Button(self,text="Registrar Tags", command=lambda: self.submit(cal,cat,sup,clean,damage,status))
         submitBtn.grid(row=9,column=0,columnspan=2,padx=10,pady=10)
              
-    def returnPage(self,controller):
+    def returnPage(self,controller): #retorno para a pagina de contagem de tags
         self.pack_forget()
         controller.show_frame(TagCount)
 
-    def submit(self, date, cat, sup, clean, damage, status):
+    def submit(self, date, cat, sup, clean, damage, status): #funcao que se comunica com o back e envia o json para registro das tags
 
         body = {
             "tag_list": unregTags,
@@ -512,7 +512,7 @@ class TagRegPage(tk.Frame):
         
         self.regWarning['text'] = r.json()["message"]
                 
-class TagChangePage(tk.Frame):
+class TagChangePage(tk.Frame): # frame de visualizacao e alteracao de tags
 
     def __init__(self, parent, controller):
         self.err = None
@@ -540,11 +540,11 @@ class TagChangePage(tk.Frame):
             e.grid(row=3,column=i,padx=10,pady=10)
             i+=1
 
-    def returnPage(self,controller):
+    def returnPage(self,controller): # retorno para a contagem de tags
         self.pack_forget()
         controller.show_frame(TagCount)
 
-    def renderChange(self,m):
+    def renderChange(self,m): # criar widgets de alteracao de tags apos a lista ser printada
         
         events = ["Limpa","Suja","Ativa","Inativa","Danificada","Restaurada"]
 
@@ -569,7 +569,7 @@ class TagChangePage(tk.Frame):
         subBtn = ttk.Button(self,text="Alterar",command=lambda: self.submitChange(tag,event))
         subBtn.grid(row=m+3,padx=10,pady=10)
 
-    def submitChange(self,tag,event):
+    def submitChange(self,tag,event): # funcao que se comunica com o back para submeter as alteracoes
         tag = tag.get()
         event = event.get()
         body = {
@@ -582,7 +582,7 @@ class TagChangePage(tk.Frame):
             self.regWarning['text']="Alterado com sucesso!"
 
 
-    def updatePage(self):
+    def updatePage(self): #funcao que atualiza a pagina, no momento não funciona e não tivemos tempo de ajeitar.
         global regTags
         global itemList
         m = 4
@@ -601,7 +601,7 @@ class TagChangePage(tk.Frame):
         return m
 
 
-class LogList(tk.Frame):
+class LogList(tk.Frame): # Frame de Log de eventos
  #(tag_id,event,date,staffname)
     def __init__(self, parent, controller):
 
@@ -621,22 +621,22 @@ class LogList(tk.Frame):
             e.grid(row=2,column=i,padx=10,pady=10)
             i+=1
 
-    def returnMenu(self,controller):
+    def returnMenu(self,controller): #retorno para o menu
         self.pack_forget()
         controller.show_frame(Menu)
 
 
-def startCount(btn,label):
-    global countFlag
+def startCount(btn,label): # funcao que inicia a contagem das tags
+    global countFlag 
     global t1
     global tagsWarn
-    tagsWarn['text'] = " "
+    tagsWarn['text'] = " " 
     countFlag = 0
     label['text'] = 0
     btn.configure(text = "Parar", command = lambda: stopCount(btn,label))
     if t1 is not None:
         t1.join()
-    t1 = Thread(target = readTags)
+    t1 = Thread(target = readTags) # Tivemos que criar uma Thread para rodar a funcao de leitura, pois como esta roda em loop, quebraria o mainloop da janela do tkinter.
     t1.setDaemon(True)
     t1.start()
     
@@ -647,9 +647,9 @@ def stopCount(btn,label):
     countFlag = 1
     btn.configure(text = "Contar", command = lambda: startCount(btn,label))
     if len(inputList) != 0:
-        checkTags(inputList)
+        checkTags(inputList) # ao parar a contagem, checar as tags
 
-def checkTags(tagList):
+def checkTags(tagList): # funcao que checa se as tags lidas estão registradas ou nao
     global unregTags
     global regTags
     global tagsWarn
@@ -674,7 +674,7 @@ def checkTags(tagList):
         changeBtn.state(['!disabled'])
         regBtn.state(['disabled'])
     
-def readTags():
+def readTags(): #funcao de leitura de tags, utilizamos a biblioteca PySerial para se conectar a porta Serial do arduino
     global countFlag
     global inputList
     global ser
@@ -694,7 +694,7 @@ def readTags():
                 sleep(1)
                 print(f'Added {decodedBytes} to the read tags list.')
 
-def setArduino(label,button):
+def setArduino(label,button): #funcao que roda a cada 1s e checa o status de conexao com o arduino
     global countFlag
     port = findArduinoPort()
     if port is not None:
@@ -707,84 +707,22 @@ def setArduino(label,button):
     
     label.after(1000,setArduino,label,button)
 
-def findArduinoPort():
+def findArduinoPort(): # Provavelmente teria uma maneira mais rapida de realizar isso, mas como nosso membros diferem de sistemas operacionais, esta função compara o parametro em comum que explicita que é um arduino que está conectado
         devices = list(list_ports.comports())
         for device in devices:
             manufacturer = device.manufacturer
             if manufacturer is not None and 'arduino' in manufacturer.lower():
                 return device.device
 
-def updateTagLabel(num):
+def updateTagLabel(num): # funcao que roda a cada 1s e faz update do numero de tags lidas
     try:
         num['text'] = messageQueue.popleft()
     except IndexError: pass
     num.after(1000,updateTagLabel,num)
 
 
-class StartPage(tk.Frame):
-
-    def __init__(self, parent, controller):
-
-        ttk.Frame.__init__(self, parent)
-
-        label = ttk.Label(self, text="StartPage", font=LARGEFONT)
-        label.grid(row=0, column=4, padx=10, pady=10)
-
-        button1 = ttk.Button(self, text="Page 1",
-                             command=lambda: controller.show_frame(Page1))
-
-        button1.grid(row=1, column=1, padx=10, pady=10)
-
-        button2 = ttk.Button(self, text="Page 2",
-                             command=lambda: controller.show_frame(Page2))
-
-        button2.grid(row=2, column=1, padx=10, pady=10)
-
-
-
-
-class Page1(tk.Frame):
-
-    def __init__(self, parent, controller):
-
-        ttk.Frame.__init__(self, parent)
-
-        label = ttk.Label(self, text="Page 1", font=LARGEFONT)
-        label.grid(row=0, column=4, padx=10, pady=10)
-
-        button1 = ttk.Button(self, text="StartPage",
-                             command=lambda: controller.show_frame(StartPage))
-
-        button1.grid(row=1, column=1, padx=10, pady=10)
-
-        button2 = ttk.Button(self, text="Page2",
-                             command=lambda: controller.show_frame(Page2))
-
-        button2.grid(row=2, column=1, padx=10, pady=10)
-
-
-class Page2(tk.Frame):
-
-    def __init__(self, parent, controller):
-
-        tk.Frame.__init__(self, parent)
-
-        label = ttk.Label(self, text="Page 2", font=LARGEFONT)
-        label.grid(row=0, column=4, padx=10, pady=10)
-
-        button1 = ttk.Button(self, text="Page 1",
-                             command=lambda: controller.show_frame(Page1))
-
-        button1.grid(row=1, column=1, padx=10, pady=10)
-
-        button2 = ttk.Button(self, text="Page2",
-                             command=lambda: controller.show_frame(Page2))
-
-        button2.grid(row=2, column=1, padx=10, pady=10)
-
-
 if __name__ == '__main__':
-    app = tkinterApp()
+    app = tkinterApp() #Iniciando o tkinter
     
 
     app.mainloop()
